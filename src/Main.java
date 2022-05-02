@@ -11,9 +11,8 @@ public class Main {
 
     public static void main1(String[] args) {
 
-        DatabaseHandler database = new DatabaseHandler();
-
-        System.out.println(database.connectionExists("12"));
+        UserNameHandler userNameHandler = new UserNameHandler();
+        System.out.println(userNameHandler.isCorrectNickname("Aarosha123"));
     }
 
     public static void main(String[] args) {

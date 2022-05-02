@@ -68,9 +68,113 @@ public class Handler extends Thread{
         return;
     }
 
-    private void handleJoinUs(String client, OutputStream output, String name, String publicKey){
+    private boolean handleJoinUs(OutputStream output, String name, String publicKey){
 
+        DatabaseHandler database = new DatabaseHandler();
+        UserNameHandler userNameHandler = new UserNameHandler();
+        JSONObject jsonResponse = new JSONObject();
 
+        boolean userExist = database.userExists(name);
+
+        if(userExist){
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.JOIN_US_USER_EXISTS);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        if(!userNameHandler.isCorrect(name)){
+            // only way to be there - username is incorrect (we check if it exists before)
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.JOIN_US_INCORRECT_NAME);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        String result = database.addUser(name, publicKey);
+
+        if(result == Constants.JOIN_US_ERROR){
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SOMETHING_WENT_WRONG_MESSAGE);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+        else{ // we've got the session
+            database.updateLastActive(name);
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
+            jsonResponse.put(Constants.SESSION_HEADER, result);
+            sendResponse(output, jsonResponse.toJSONString());
+            return true;
+        }
+    }
+
+    private boolean handleHypnotize(OutputStream output, String userName, String nickName, String session){
+        SessionHandler sessionHandler = new SessionHandler();
+        DatabaseHandler database = new DatabaseHandler();
+        UserNameHandler userNameHandler = new UserNameHandler();
+        JSONObject jsonResponse = new JSONObject();
+
+        if(!database.userExists(userName)){
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.HYPNOTIZE_USER_DOES_NOT_EXIST);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        if(!sessionHandler.checkAuth(session, userName)){ // if not authorized
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.INCORRECT_SESSION);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        if(!userNameHandler.isCorrectNickname(nickName)){ // if nickname is incorrect
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.HYPNOTIZE_INCORRECT_NICKNAME);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        if(database.userClaimedNickname(userName)){ // if user already claimed a nickname once
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.HYPNOTIZE_USER_ALREADY_TAKEN_NICKNAME);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+
+        }
+
+        if(database.nicknameExists(nickName)){ // if nickname is already taken
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.HYPNOTIZE_NICKNAME_TAKEN);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        // otherwise we add a nickname
+
+        if(database.addNickName(nickName, userName)){ // if we successfully added a nickname
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
+            sendResponse(output, jsonResponse.toJSONString());
+            return true;
+        }
+        else // if something went wrong while adding a nickname
+        {
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SOMETHING_WENT_WRONG_MESSAGE);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+    }
+
+    private void handleNotConnected(OutputStream output){
+        JSONObject jsonResponse = new JSONObject();
+
+        jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+        jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.NOT_CONNECTED_MESSAGE);
+        sendResponse(output, jsonResponse.toJSONString());
+    }
+
+    private boolean handleAuth(OutputStream output, String userName){
 
     }
 
@@ -111,50 +215,98 @@ public class Handler extends Thread{
 
             switch(requestType){
 
-                case ("meet"):
-                    handleMeet((String)((JSONObject)requestData).get("publicKey"), output, clientIp);
+                case ("meet"): {
+                    handleMeet((String) ((JSONObject) requestData).get("publicKey"), output, clientIp);
                     input.close();
                     output.close();
                     this.socket.close();
                     Log.write("HANDLED MEET REQUEST FROM " + clientIp);
                     break;
-                case ("keep_alive"):
+                }
+                case ("keep_alive"): {
                     handleKeepAlive(clientIp, output);
                     input.close();
                     output.close();
                     this.socket.close();
                     Log.write("HANDLED KEEP_ALIVE REQUEST FROM " + clientIp);
                     break;
-                case ("auth"):
+                }
+                case ("auth"): {
                     // TODO: auth-request
-                    break;
-                case ("twisted"):
-                    // TODO: twisted-request
-                    break;
-                case ("join_us"):
-                    // TODO: join_us-request
                     DatabaseHandler database = new DatabaseHandler();
                     String sharedKey = database.getSharedKey(clientIp);
 
-                    System.out.println("SHARED KEY IS " + sharedKey);
+                    if(sharedKey == Constants.CONNECTION_NOT_FOUND_MESSAGE){
+                        handleNotConnected(output);
+                        break;
+                    }
 
                     JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+                    String clientUserName = (String) dataFromClient.get("userName");
 
-                    System.out.println(dataFromClient.get("publicKey"));
+                    boolean operationResult = handleAuth(output, clientUserName);
 
                     break;
-                case ("hypnotize"):
-                    // TODO: hypnotize-request
+                }
+                case ("twisted"): {
+                    // TODO: twisted-request
                     break;
-                case ("send"):
+                }
+                case ("join_us"): {
+                    DatabaseHandler database = new DatabaseHandler();
+                    String sharedKey = database.getSharedKey(clientIp);
+
+                    if(sharedKey == Constants.CONNECTION_NOT_FOUND_MESSAGE){
+                        handleNotConnected(output);
+                        break;
+                    }
+
+                    JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+                    String clientUserName = (String) dataFromClient.get("userName");
+                    String clientPublicKey = (String) dataFromClient.get("publicKey");
+
+                    boolean operationResult = handleJoinUs(output, clientUserName, clientPublicKey);
+
+                    if (operationResult)
+                        Log.write("ADDED USER " + clientUserName);
+                    else
+                        Log.write("ERROR WHILE ADDING USER " + clientUserName);
+                    break;
+                }
+                case ("hypnotize"): {
+                    DatabaseHandler database = new DatabaseHandler();
+                    String sharedKey = database.getSharedKey(clientIp);
+
+                    if(sharedKey == Constants.CONNECTION_NOT_FOUND_MESSAGE){
+                        handleNotConnected(output);
+                        break;
+                    }
+
+                    JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+                    String clientUserName = (String) dataFromClient.get("userName");
+                    String clientNickName = (String) dataFromClient.get("nickName");
+                    String clientSession = (String) dataFromClient.get("session");
+
+                    boolean operationResult = handleHypnotize(output, clientUserName, clientNickName, clientSession);
+
+                    if(operationResult)
+                        Log.write("ADDED NICKNAME " + clientNickName + " FOR USER " + clientUserName);
+                    else
+                        Log.write("ERROR WHILE ADDING NICKNAME " + clientNickName + " FOR USER " + clientUserName);
+                    break;
+                }
+                case ("send"): {
                     // TODO: send-request
                     break;
-                case("check_mail"):
+                }
+                case("check_mail"): {
                     // TODO: check_mail
                     break;
-                default:
+                }
+                default: {
                     // TODO: default
                     break;
+                }
             }
 
         }catch(IOException e){

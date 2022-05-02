@@ -35,6 +35,7 @@ public class DatabaseHandler extends DatabaseConfig {
             return false;
         } catch (ClassNotFoundException e) {
             System.out.println("CLASS NOT FOUND EXCEPTION WHILE CHECKING IF CONNECTION EXISTS");
+            e.printStackTrace();
             return false;
         }
     }
@@ -143,6 +144,167 @@ public class DatabaseHandler extends DatabaseConfig {
             System.out.println("SQL EXCEPTION WHILE CLEANING CONNECTIONS");
         } catch (ClassNotFoundException e) {
             System.out.println("CLASS NOT FOUND EXCEPTION WHILE CLEANING CONNECTIONS");
+        }
+    }
+
+    public String addUser(String userName, String publicKey){
+        String insertToUsers = "INSERT INTO " + Constants.USERS_TABLE + " (" +
+                Constants.USERS_USER + "," + Constants.USERS_PUBLIC_KEY + "," +
+                Constants.USERS_SESSION + "," + Constants.USERS_LOGGED_UNTIL + ")" + "VALUES(?,?,?,?)";
+        long loggedUntil = (currentTimeMillis() / 1000) + Constants.ADDITIONAL_LOGGED_IN_TIME;
+        SessionHandler sessionHandler = new SessionHandler();
+        String newSession = sessionHandler.generateSession();
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(insertToUsers)){
+            preparedStatement.setString(1, userName);
+            preparedStatement.setString(2, publicKey);
+            preparedStatement.setString(3, newSession);
+            preparedStatement.setLong(4, loggedUntil);
+            preparedStatement.executeUpdate();
+
+            return newSession;
+        }catch (SQLException e){
+            System.out.println("SQL EXCEPTION WHILE ADDING USER");
+            e.printStackTrace();
+            return Constants.JOIN_US_ERROR;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE ADDING USER");
+            return Constants.JOIN_US_ERROR;
+        }
+
+
+    }
+
+    public boolean updateLastActive(String userName){
+        String insertToLastActive = "INSERT INTO " + Constants.LAST_ACTIVE_TABLE + " (" +
+                Constants.LAST_ACTIVE_USERNAME + "," + Constants.LAST_ACTIVE_LAST_ACTIVE + ")" + "VALUES(?,?)";
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(insertToLastActive)){
+            preparedStatement.setString(1, userName);
+            preparedStatement.setLong(2, currentTimeMillis() / 1000L);
+            preparedStatement.executeUpdate();
+
+            return true;
+        }catch (SQLException e){
+            System.out.println("SQL EXCEPTION WHILE UPDATING LAST ACTIVE");
+            return false;
+        } catch (ClassNotFoundException e){
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE UPDATING LAST ACTIVE");
+            return false;
+        }
+    }
+
+    public String getUserSession(String userName, long currentTime){
+        String select = "SELECT * FROM " + Constants.USERS_TABLE + " WHERE "
+                + Constants.USERS_USER + " = ?";
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setString(1, userName);
+            ResultSet result = preparedStatement.executeQuery();
+            // user DEFINETELY EXISTS
+            result.next();
+            long loggedUntil = result.getLong(5);
+
+            if(loggedUntil >= currentTime)
+                return result.getString(4);
+            else
+                return Constants.CONNECTION_NOT_FOUND_MESSAGE;
+        }catch (SQLException e){
+            System.out.println("SQL EXCEPTION WHILE GETTING USER'S SESSION");
+            e.printStackTrace();
+            return Constants.CONNECTION_NOT_FOUND_MESSAGE;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE GETTING USER'S SESSION");
+            return Constants.CONNECTION_NOT_FOUND_MESSAGE;
+        }
+    }
+
+    public boolean userExists(String userName){
+        String select = "SELECT COUNT(*) FROM " + Constants.USERS_TABLE +
+                " WHERE " + Constants.USERS_USER+ " = ?";
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setString(1, userName);
+            ResultSet result = preparedStatement.executeQuery();
+            result.next();
+
+            if(result.getInt(1) == 0)
+                return false;
+            else
+                return true;
+        } catch (SQLException e){
+            System.out.println("SQL EXCEPTION WHILE CHECKING IF USER EXISTS");
+            e.printStackTrace();
+            return false;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE CHECKING IF USER EXISTS");
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean nicknameExists(String nickName){
+        String select = "SELECT COUNT(*) FROM " + Constants.NICKNAMES_TABLE +
+                " WHERE " + Constants.NICKNAMES_NICKNAME + " = ?";
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setString(1, nickName);
+            ResultSet result = preparedStatement.executeQuery();
+            result.next();
+
+            if(result.getInt(1) == 0)
+                return false;
+            else
+                return true;
+        } catch (SQLException e){
+            System.out.println("SQL EXCEPTION WHILE CHECKING IF NICKNAME EXISTS");
+            e.printStackTrace();
+            return false;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE CHECKING IF NICKNAME EXISTS");
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean userClaimedNickname(String userName){
+        String select = "SELECT COUNT(*) FROM " + Constants.NICKNAMES_TABLE +
+                " WHERE " + Constants.NICKNAMES_USER + " = ?";
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setString(1, userName);
+            ResultSet result = preparedStatement.executeQuery();
+            result.next();
+
+            if(result.getInt(1) == 0)
+                return false;
+            else
+                return true;
+        } catch (SQLException e){
+            System.out.println("SQL EXCEPTION WHILE CHECKING IF USER CLAIMED A NICKNAME");
+            e.printStackTrace();
+            return false;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE CHECKING IF USER CLAIMED A NICKNAME");
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean addNickName(String nickName, String userName){
+        String insertToNickNames = "INSERT INTO " + Constants.NICKNAMES_TABLE+ " (" +
+                Constants.NICKNAMES_NICKNAME + "," + Constants.NICKNAMES_USER + ") " + "VALUES(?,?)";
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(insertToNickNames)){
+            preparedStatement.setString(1, nickName);
+            preparedStatement.setString(2, userName);
+            preparedStatement.executeUpdate();
+
+            return true;
+        }catch (SQLException e){
+            System.out.println("SQL EXCEPTION WHILE ADDING NICKNAME");
+            e.printStackTrace();
+            return false;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE ADDING NICKNAME");
+            return false;
         }
     }
 }
