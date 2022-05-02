@@ -13,9 +13,9 @@ public class Constants {
 
 
     public static final String CREATING_SESSIONS_TABLE = "creatingsessions";
-    public static final String CREATING_SESSIONS_IP = "user";
+    public static final String CREATING_SESSIONS_USER = "user";
     public static final String CREATING_SESSIONS_SECRET = "secret";
-    public static final String CREATING_SESSIONS_ALIVE_UNTIL = "aliveUntil";
+    public static final String CREATING_SESSIONS_ALIVE_UNTIL = "aliveuntil";
 
 
     public static final String NICKNAMES_TABLE = "nicknames";
@@ -42,6 +42,7 @@ public class Constants {
     public static final int SESSION_LENGTH = 30;
     public static final int NICKNAME_MIN_LENGTH = 3;
     public static final int NICKNAME_MAX_LENGTH = 10;
+    public static final int SECRET_LENGTH = 25;
 
     public static final String JOIN_US_ERROR = "ERR";
     public static final String JOIN_US_INCORRECT_NAME = "incorrect_name";
@@ -58,7 +59,14 @@ public class Constants {
     public static final String SESSION_HEADER = "session";
     public static final String NOT_CONNECTED_MESSAGE = "not_connected";
 
+    public static final String AUTH_USER_DOES_NOT_EXIST = "no_such_user";
+    public static final String AUTH_PUBLIC_KEY_NOT_FOUND = "key_not_found";
+    public static final String AUTH_CHALLENGE_HEADER = "challenge";
+
     public static final String LAST_ACTIVE_TABLE = "last_active";
     public static final String LAST_ACTIVE_USERNAME = "username";
     public static final String LAST_ACTIVE_LAST_ACTIVE = "last_active";
+
+    public static final String TWISTED_USER_DOES_NOT_EXIST = "no_such_user";
+    public static final String TWISTED_SECRET_NOT_FOUND = "auth_not_found";
 }

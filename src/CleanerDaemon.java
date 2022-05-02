@@ -6,6 +6,7 @@ public class CleanerDaemon extends Thread{
 
         while(true){
             database.cleanConnections();
+            database.cleanAuth();
             Log.write("CLEANER DAEMON DONE WORK");
             try {
                 Thread.sleep(Constants.CLEAN_CONNECTIONS_TIME);

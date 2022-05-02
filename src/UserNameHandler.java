@@ -53,4 +53,14 @@ public class UserNameHandler {
 
         return resultBuilder.toString();
     }
+
+    public String generateSecret() {
+        SecureRandom random = new SecureRandom();
+        StringBuilder resultBuilder = new StringBuilder();
+
+        for (int i = 0; i < Constants.SECRET_LENGTH; ++i)
+            resultBuilder.append(appropriateChars.get(random.nextInt(0, appropriateChars.size())));
+
+        return resultBuilder.toString();
+    }
 }

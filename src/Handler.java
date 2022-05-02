@@ -175,7 +175,48 @@ public class Handler extends Thread{
     }
 
     private boolean handleAuth(OutputStream output, String userName){
+        DatabaseHandler database = new DatabaseHandler();
+        JSONObject jsonResponse = new JSONObject();
 
+        if(!database.userExists(userName)){ // if user does not exist
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.AUTH_USER_DOES_NOT_EXIST);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        UserNameHandler userNameHandler = new UserNameHandler();
+        Sanitizer sanitizer = new Sanitizer();
+        RSAProvider rsaProvider = new RSAProvider();
+
+        String secret = userNameHandler.generateSecret();
+        byte[] byteChallenge = rsaProvider.encrypt(secret.getBytes(StandardCharsets.UTF_8), database.getPublicKey(userName));
+
+        if(!database.addAuth(userName, secret)){
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SOMETHING_WENT_WRONG_MESSAGE);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+        else {
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
+            jsonResponse.put(Constants.AUTH_CHALLENGE_HEADER, sanitizer.sanitize(byteChallenge));
+            sendResponse(output, jsonResponse.toJSONString());
+            return true;
+        }
+
+    }
+
+    private boolean handleTwisted(OutputStream output, String userName, String solution){
+        DatabaseHandler database = new DatabaseHandler();
+        JSONObject jsonResponse = new JSONObject();
+
+        if(!database.userExists(userName)){ // if user does not exist
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.TWISTED_USER_DOES_NOT_EXIST);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
     }
 
     private JSONObject getDataFromClient(Object encodedDataString, String sharedKey) throws ParseException {
@@ -232,7 +273,6 @@ public class Handler extends Thread{
                     break;
                 }
                 case ("auth"): {
-                    // TODO: auth-request
                     DatabaseHandler database = new DatabaseHandler();
                     String sharedKey = database.getSharedKey(clientIp);
 
@@ -246,10 +286,28 @@ public class Handler extends Thread{
 
                     boolean operationResult = handleAuth(output, clientUserName);
 
+                    if(operationResult)
+                        Log.write("CREATED AUTH WITH " + clientUserName);
+                    else
+                        Log.write("ERROR WHILE CREATING AUTH WITH " + clientUserName);
                     break;
                 }
                 case ("twisted"): {
                     // TODO: twisted-request
+                    DatabaseHandler database = new DatabaseHandler();
+                    String sharedKey = database.getSharedKey(clientIp);
+
+                    if(sharedKey == Constants.CONNECTION_NOT_FOUND_MESSAGE){
+                        handleNotConnected(output);
+                        break;
+                    }
+
+                    JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+                    String clientUserName = (String) dataFromClient.get("userName");
+                    String clientSolution = (String) dataFromClient.get("solution");
+
+                    boolean operationResult = handleTwisted(output, clientUserName, clientSolution);
+
                     break;
                 }
                 case ("join_us"): {

@@ -90,7 +90,7 @@ public class DatabaseHandler extends DatabaseConfig {
         String insert = "INSERT INTO " + Constants.CONNECTIONS_TABLE + " (" +
                 Constants.CONNECTIONS_ADRESS + "," + Constants.CONNECTIONS_SHARED_KEY + "," +
                 Constants.CONNECTIONS_ALIVE_UNTIL + ")" + "VALUES(?,?,?)";
-        long aliveUntil = (currentTimeMillis() / 1000) + Constants.ADDITIONAL_UPDATE_TIME;
+        long aliveUntil = (currentTimeMillis() / 1000L) + Constants.ADDITIONAL_UPDATE_TIME;
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(insert)){
             preparedStatement.setString(1, adress);
@@ -144,6 +144,20 @@ public class DatabaseHandler extends DatabaseConfig {
             System.out.println("SQL EXCEPTION WHILE CLEANING CONNECTIONS");
         } catch (ClassNotFoundException e) {
             System.out.println("CLASS NOT FOUND EXCEPTION WHILE CLEANING CONNECTIONS");
+        }
+    }
+
+    public void cleanAuth(){
+        String delete = "DELETE FROM " + Constants.CREATING_SESSIONS_TABLE + " WHERE "
+                + Constants.CREATING_SESSIONS_ALIVE_UNTIL + " < ?";
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
+            preparedStatement.setLong(1, currentTimeMillis() / 1000L);
+
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE CLEANING AUTH");
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE CLEANING AUTH");
         }
     }
 
@@ -307,4 +321,124 @@ public class DatabaseHandler extends DatabaseConfig {
             return false;
         }
     }
+
+    public boolean authExists(String userName){
+        String select = "SELECT COUNT(*) FROM " + Constants.CREATING_SESSIONS_TABLE +
+                " WHERE " + Constants.CREATING_SESSIONS_USER + " = ?";
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setString(1, userName);
+
+            ResultSet result = preparedStatement.executeQuery();
+            result.next();
+
+            if(result.getInt(1) == 0)
+                return false;
+            else
+                return true;
+        } catch (SQLException e){
+            System.out.println("SQL EXCEPTION WHILE CHECKING IF AUTH EXISTS");
+            e.printStackTrace();
+            return false;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE CHECKING IF AUTH EXISTS");
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public void removeAuth(String userName){
+        String delete = "DELETE FROM " + Constants.CREATING_SESSIONS_TABLE + " WHERE " + Constants.CREATING_SESSIONS_USER +
+                " = ?";
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
+            preparedStatement.setString(1, userName);
+
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE REMOVING AN AUTH");
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE REMOVING AN AUTH");
+        }
+    }
+
+    public boolean addAuth(String userName, String secret){
+
+        if(authExists(userName)){
+            removeAuth(userName);
+        }
+
+        String insert = "INSERT INTO " + Constants.CREATING_SESSIONS_TABLE + " (" +
+                Constants.CREATING_SESSIONS_USER + "," + Constants.CREATING_SESSIONS_SECRET + "," +
+                Constants.CREATING_SESSIONS_ALIVE_UNTIL + ")" + "VALUES(?,?,?)";
+        long aliveUntil = (currentTimeMillis() / 1000L) + Constants.ADDITIONAL_UPDATE_TIME;
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(insert)){
+            preparedStatement.setString(1, userName);
+            preparedStatement.setString(2, secret);
+            preparedStatement.setLong(3, aliveUntil);
+
+            preparedStatement.executeUpdate();
+            return true;
+        }catch (SQLException e){
+            System.out.println("SQL EXCEPTION WHILE ADDING AN AUTH");
+            return false;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE ADDING AN AUTH");
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public String getPublicKey(String userName){
+
+        // user definetely exists
+
+        String select = "SELECT " + Constants.USERS_PUBLIC_KEY +" FROM " + Constants.USERS_TABLE + " WHERE "
+                + Constants.USERS_USER + " = ?";
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setString(1, userName);
+
+            ResultSet result = preparedStatement.executeQuery();
+
+            result.next();
+
+            return result.getString(1);
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE GETTING SHARED KEY FOR CONNECTION FROM " + userName);
+            return Constants.AUTH_PUBLIC_KEY_NOT_FOUND;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE GETTING SHARED KEY FOR CONNECTION FROM " + userName);
+            return Constants.AUTH_PUBLIC_KEY_NOT_FOUND;
+        }
+    }
+
+    public String getSecret(String userName, long currentTime){
+
+        if(!authExists(userName)){
+            return Constants.TWISTED_SECRET_NOT_FOUND;
+        }
+
+        String select = "SELECT " + Constants.CONNECTIONS_SHARED_KEY +" FROM " + Constants.CONNECTIONS_TABLE + " WHERE "
+                + Constants.CONNECTIONS_ADRESS + " = ?";
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setString(1, adress);
+
+            ResultSet result = preparedStatement.executeQuery();
+
+            result.next();
+
+            return result.getString(1);
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE GETTING SECRET FOR " + userName);
+            return Constants.TWISTED_SECRET_NOT_FOUND;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE GETTING SECRET FOR " + userName);
+            return Constants.TWISTED_SECRET_NOT_FOUND;
+        }
+    }
+
+
+
 }
