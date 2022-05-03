@@ -217,6 +217,39 @@ public class Handler extends Thread{
             sendResponse(output, jsonResponse.toJSONString());
             return false;
         }
+
+        String secret = database.getSecret(userName, System.currentTimeMillis() / 1000L);
+
+        if(secret.equals(Constants.TWISTED_SECRET_NOT_FOUND)){ // secret not found
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.TWISTED_SECRET_NOT_FOUND);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }else if(secret.equals(solution)){ // if challenge solved right
+            SessionHandler sessionHandler = new SessionHandler();
+            String newSession = sessionHandler.generateSession();
+
+            database.removeAuth(userName); // we remove this auth attempt - challenge was solved
+
+            if(database.setSession(userName, newSession)){ // if we sucessfully added new session
+                jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
+                jsonResponse.put(Constants.TWISTED_NEW_SESSION_HEADER, newSession);
+                sendResponse(output, jsonResponse.toJSONString());
+                return true;
+            }else{ // if something went wrong when adding new session
+                jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+                jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SOMETHING_WENT_WRONG_MESSAGE);
+                sendResponse(output, jsonResponse.toJSONString());
+                return false;
+            }
+        }else{ // if challenge solved wrong
+            database.removeAuth(userName); // we remove this auth attempt - only one try to solve allowed
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.TWISTED_WRONG_SOLUTION);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
     }
 
     private JSONObject getDataFromClient(Object encodedDataString, String sharedKey) throws ParseException {
@@ -293,7 +326,6 @@ public class Handler extends Thread{
                     break;
                 }
                 case ("twisted"): {
-                    // TODO: twisted-request
                     DatabaseHandler database = new DatabaseHandler();
                     String sharedKey = database.getSharedKey(clientIp);
 
@@ -308,6 +340,10 @@ public class Handler extends Thread{
 
                     boolean operationResult = handleTwisted(output, clientUserName, clientSolution);
 
+                    if(operationResult)
+                        Log.write("SUCCESSFULLY AUTH WITH " + clientUserName);
+                    else
+                        Log.write("ERROR WHILE TRYING TO AUTH WITH " + clientUserName);
                     break;
                 }
                 case ("join_us"): {

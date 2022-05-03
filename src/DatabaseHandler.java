@@ -419,23 +419,55 @@ public class DatabaseHandler extends DatabaseConfig {
             return Constants.TWISTED_SECRET_NOT_FOUND;
         }
 
-        String select = "SELECT " + Constants.CONNECTIONS_SHARED_KEY +" FROM " + Constants.CONNECTIONS_TABLE + " WHERE "
-                + Constants.CONNECTIONS_ADRESS + " = ?";
+        String select = "SELECT * FROM " + Constants.CREATING_SESSIONS_TABLE + " WHERE "
+                + Constants.CREATING_SESSIONS_USER + " = ?" ;
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
-            preparedStatement.setString(1, adress);
-
+            preparedStatement.setString(1, userName);
             ResultSet result = preparedStatement.executeQuery();
-
             result.next();
 
-            return result.getString(1);
+            long aliveUntil = result.getLong(3);
+
+            if(aliveUntil >= currentTime){ // auth is still active
+                return result.getString(2);
+            }
+            else{
+                return Constants.TWISTED_SECRET_NOT_FOUND;
+            }
         } catch (SQLException e) {
             System.out.println("SQL EXCEPTION WHILE GETTING SECRET FOR " + userName);
             return Constants.TWISTED_SECRET_NOT_FOUND;
         } catch (ClassNotFoundException e) {
             System.out.println("CLASS NOT FOUND EXCEPTION WHILE GETTING SECRET FOR " + userName);
             return Constants.TWISTED_SECRET_NOT_FOUND;
+        }
+    }
+
+    public boolean setSession(String userName, String newSession){
+
+        // user definetely exists
+
+        String update = "UPDATE " + Constants.USERS_TABLE + " SET " +
+                Constants.USERS_SESSION + " = ?, " + Constants.USERS_LOGGED_UNTIL + " = ?" +
+                " WHERE " + Constants.USERS_USER +
+                " = ?";
+
+        long loggedUntil = (currentTimeMillis() / 1000) + Constants.ADDITIONAL_LOGGED_IN_TIME;
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(update)){
+            preparedStatement.setString(1, newSession);
+            preparedStatement.setLong(2, loggedUntil);
+            preparedStatement.setString(3, userName);
+
+            preparedStatement.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE SETTING NEW SESSION FOR USER " + userName);
+            return false;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE SETTING NEW SESSION FOR USER " + userName);
+            return false;
         }
     }
 

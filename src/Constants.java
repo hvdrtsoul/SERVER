@@ -69,4 +69,6 @@ public class Constants {
 
     public static final String TWISTED_USER_DOES_NOT_EXIST = "no_such_user";
     public static final String TWISTED_SECRET_NOT_FOUND = "auth_not_found";
+    public static final String TWISTED_NEW_SESSION_HEADER = "new_session";
+    public static final String TWISTED_WRONG_SOLUTION = "wrong_solution";
 }
