@@ -252,6 +252,33 @@ public class Handler extends Thread{
 
     }
 
+    private boolean handleGetUsername(OutputStream output, String nickName){
+        DatabaseHandler database = new DatabaseHandler();
+        JSONObject jsonResponse = new JSONObject();
+
+        if(!database.nicknameExists(nickName)){ // if nickname does not exist
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.NICKNAME_NOT_FOUND);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        String userName = database.getUserNameByNickName(nickName);
+
+        if(userName.equals(Constants.NICKNAME_NOT_FOUND)){
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SOMETHING_WENT_WRONG_MESSAGE);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }else{
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
+            jsonResponse.put(Constants.GET_USERNAME_USERNAME_HEADER, userName);
+            sendResponse(output, jsonResponse.toJSONString());
+            return true;
+        }
+
+    }
+
     private JSONObject getDataFromClient(Object encodedDataString, String sharedKey) throws ParseException {
 
         ANomalUSProvider anomalus = new ANomalUSProvider();
@@ -395,6 +422,23 @@ public class Handler extends Thread{
                 }
                 case("check_mail"): {
                     // TODO: check_mail
+                    break;
+                }
+                case("get_username"): {
+                    // TODO: get_username
+                    DatabaseHandler database = new DatabaseHandler();
+                    String sharedKey = database.getSharedKey(clientIp);
+
+                    if(sharedKey == Constants.CONNECTION_NOT_FOUND_MESSAGE){
+                        handleNotConnected(output);
+                        break;
+                    }
+
+                    JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+                    String clientNickName = (String) dataFromClient.get("nickName");
+
+                    boolean operationResult = handleGetUsername(output, clientNickName);
+
                     break;
                 }
                 default: {

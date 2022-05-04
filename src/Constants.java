@@ -21,12 +21,21 @@ public class Constants {
     public static final String NICKNAMES_TABLE = "nicknames";
     public static final String NICKNAMES_NICKNAME = "nickname";
     public static final String NICKNAMES_USER = "user";
+    public static final String NICKNAME_NOT_FOUND = "not_found";
+
+    public static final String GET_USERNAME_USERNAME_HEADER = "username";
 
 
-    public static final String PENDING_MESSAGES_TABLE = "pendingmessages";
+    public static final String PENDING_MESSAGES_TABLE = "pending_messages";
     public static final String PENDING_MESSAGES_TO = "to";
-    public static final String PENDING_MESSAGES_FROM = "from";
     public static final String PENDING_MESSAGES_ID = "id";
+
+    public static final String MESSAGES_TABLE = "messages";
+    public static final String MESSAGES_ID = "id";
+    public static final String MESSAGES_FROM = "from";
+    public static final String MESSAGES_TYPE = "type";
+    public static final String MESSAGES_TIMESTAMP = "timestamp";
+    public static final String MESSAGES_DATA = "data";
 
     public static final int ADDITIONAL_UPDATE_TIME = 300;
     public static final int ADDITIONAL_LOGGED_IN_TIME = 600;

@@ -322,6 +322,30 @@ public class DatabaseHandler extends DatabaseConfig {
         }
     }
 
+    public String getUserNameByNickName(String nickName){
+
+        // nickname definetely exists
+
+        String select = "SELECT " + Constants.NICKNAMES_USER +" FROM " + Constants.NICKNAMES_TABLE + " WHERE "
+                + Constants.NICKNAMES_NICKNAME + " = ?";
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setString(1, nickName);
+
+            ResultSet result = preparedStatement.executeQuery();
+
+            result.next();
+
+            return result.getString(1);
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE GETTING USER FOR NICKNAME " + nickName);
+            return Constants.NICKNAME_NOT_FOUND;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE GETTING USER FOR NICKNAME " + nickName);
+            return Constants.NICKNAME_NOT_FOUND;
+        }
+    }
+
     public boolean authExists(String userName){
         String select = "SELECT COUNT(*) FROM " + Constants.CREATING_SESSIONS_TABLE +
                 " WHERE " + Constants.CREATING_SESSIONS_USER + " = ?";
