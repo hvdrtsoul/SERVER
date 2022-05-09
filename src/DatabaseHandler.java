@@ -527,10 +527,36 @@ public class DatabaseHandler extends DatabaseConfig {
             e.printStackTrace();
             return -1;
         }
+    }
 
+    public String checkMail(String userName){
+        String select = "SELECT " + Constants.MESSAGES_ID + " FROM " + Constants.MESSAGES_TABLE +
+                " WHERE " + Constants.MESSAGES_TO + " = ?";
 
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setString(1, userName);
+            ResultSet result = preparedStatement.executeQuery();
 
+            StringBuilder resultBuilder = new StringBuilder();
 
+            while(result.next()){
+                resultBuilder.append(result.getLong(1));
+                resultBuilder.append(Constants.CHECK_MAIL_SEPARATOR);
+            }
+
+            if(resultBuilder.isEmpty()){ // if everything's okay but there's no messages
+                return Constants.CHECK_MAIL_NO_MESSAGES;
+            }else{
+                resultBuilder.deleteCharAt(resultBuilder.length()-1);
+                return resultBuilder.toString();
+            }
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE CHECKING MAIL FOR " + userName);
+            return Constants.SOMETHING_WENT_WRONG_MESSAGE;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE CHECKING MAIL FOR " + userName);
+            return Constants.SOMETHING_WENT_WRONG_MESSAGE;
+        }
     }
 
 

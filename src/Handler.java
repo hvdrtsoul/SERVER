@@ -291,7 +291,6 @@ public class Handler extends Thread{
     private boolean handleSend(OutputStream output, String session, String to, String from, String type, String data){
         SessionHandler sessionHandler = new SessionHandler();
         DatabaseHandler database = new DatabaseHandler();
-        UserNameHandler userNameHandler = new UserNameHandler();
         JSONObject jsonResponse = new JSONObject();
 
         if(!database.userExists(to)){ // if recipient does not exist
@@ -335,6 +334,41 @@ public class Handler extends Thread{
             sendResponse(output, jsonResponse.toJSONString());
             return true;
         }
+    }
+
+    private boolean handleCheckMail(OutputStream output, String userName, String session) {
+        SessionHandler sessionHandler = new SessionHandler();
+        DatabaseHandler database = new DatabaseHandler();
+        JSONObject jsonResponse = new JSONObject();
+
+        if(!database.userExists(userName)){ // if user does not exist
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.INCORRECT_SESSION);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        if(!sessionHandler.checkAuth(session, userName)){ // if user is not authorized
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.INCORRECT_SESSION);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        String mail = database.checkMail(userName);
+
+        if(mail.equals(Constants.SOMETHING_WENT_WRONG_MESSAGE)){ // if something went wrong we send an error
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SOMETHING_WENT_WRONG_MESSAGE);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+        // otherwise everyting's okay
+
+        jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
+        jsonResponse.put(Constants.CHECK_MAIL_MESSAGES_HEADER_NAME, mail);
+        sendResponse(output, jsonResponse.toJSONString());
+        return true;
     }
 
     private JSONObject getDataFromClient(Object encodedDataString, String sharedKey){
@@ -570,6 +604,39 @@ public class Handler extends Thread{
                 }
                 case("check_mail"): {
                     // TODO: check_mail
+
+                    DatabaseHandler database = new DatabaseHandler();
+                    String sharedKey = database.getSharedKey(clientIp);
+
+                    if(sharedKey == Constants.CONNECTION_NOT_FOUND_MESSAGE){
+                        handleNotConnected(output);
+                        break;
+                    }
+
+                    JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+
+                    if(dataFromClient == null){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
+                    if(!dataFromClient.containsKey("userName") || !dataFromClient.containsKey("session")){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
+                    String clientUserName = (String)dataFromClient.get("userName");
+                    String clientSession = (String)dataFromClient.get("session");
+
+                    boolean operationResult = handleCheckMail(output, clientUserName, clientSession);
+
+                    if(operationResult)
+                        Log.write("CHECKED MAIL FOR " + clientUserName);
+                    else
+                        Log.write("ERROR WHILE CHECKIG MAIL FOR " + clientUserName);
+
                     break;
                 }
                 case("get_username"): {
@@ -606,7 +673,6 @@ public class Handler extends Thread{
                     break;
                 }
                 default: { // request with unknown type is bad request
-                    // TODO: default
                     handleBadRequest(output);
                     Log.write("SUCESSFULLY HANDLED BAD REQUEST");
                     break;
@@ -618,9 +684,9 @@ public class Handler extends Thread{
             e.printStackTrace();
         }catch (ParseException e) { // wrong request
             System.out.println("EXCEPTION WHILE PARSING JSON FROM REQUEST");
-            // TODO: handle wrong request
             Log.write("SUCESSFULLY HANDLED BAD REQUEST");
             return;
         }
     }
+
 }

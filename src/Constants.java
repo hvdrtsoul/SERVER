@@ -84,6 +84,7 @@ public class Constants {
     public static final String SEND_UNKNOWN_MESSAGE_TYPE = "bad_type";
     public static final String SEND_TIMESTAMP_HEADER = "timestamp";
 
-
-
+    public static final char CHECK_MAIL_SEPARATOR = ';';
+    public static final String CHECK_MAIL_NO_MESSAGES = "no_mail";
+    public static final String CHECK_MAIL_MESSAGES_HEADER_NAME = "messages";
 }
