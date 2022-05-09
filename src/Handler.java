@@ -287,7 +287,7 @@ public class Handler extends Thread{
 
     }
 
-    private JSONObject getDataFromClient(Object encodedDataString, String sharedKey) throws ParseException {
+    private JSONObject getDataFromClient(Object encodedDataString, String sharedKey){
 
         ANomalUSProvider anomalus = new ANomalUSProvider();
         JSONParser parser = new JSONParser();
@@ -299,8 +299,11 @@ public class Handler extends Thread{
 
         System.out.println(result);
 
-
-        return (JSONObject) parser.parse(result);
+        try {
+            return (JSONObject)parser.parse(result);
+        } catch (ParseException e) {
+            return null;
+        }
     }
 
     @Override
@@ -350,6 +353,19 @@ public class Handler extends Thread{
                     }
 
                     JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+
+                    if(dataFromClient == null){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
+                    if(!dataFromClient.containsKey("userName")){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
                     String clientUserName = (String) dataFromClient.get("userName");
 
                     boolean operationResult = handleAuth(output, clientUserName);
@@ -370,6 +386,19 @@ public class Handler extends Thread{
                     }
 
                     JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+
+                    if(dataFromClient == null){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
+                    if(!dataFromClient.containsKey("userName") || !dataFromClient.containsKey("solution")){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
                     String clientUserName = (String) dataFromClient.get("userName");
                     String clientSolution = (String) dataFromClient.get("solution");
 
@@ -391,6 +420,19 @@ public class Handler extends Thread{
                     }
 
                     JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+
+                    if(dataFromClient == null){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
+                    if(!dataFromClient.containsKey("userName") || !dataFromClient.containsKey("publicKey")){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
                     String clientUserName = (String) dataFromClient.get("userName");
                     String clientPublicKey = (String) dataFromClient.get("publicKey");
 
@@ -412,6 +454,19 @@ public class Handler extends Thread{
                     }
 
                     JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+
+                    if(dataFromClient == null){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
+                    if(!dataFromClient.containsKey("userName") || !dataFromClient.containsKey("nickName") || !dataFromClient.containsKey("session")){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
                     String clientUserName = (String) dataFromClient.get("userName");
                     String clientNickName = (String) dataFromClient.get("nickName");
                     String clientSession = (String) dataFromClient.get("session");
@@ -442,6 +497,19 @@ public class Handler extends Thread{
                     }
 
                     JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+
+                    if(dataFromClient == null){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
+                    if(!dataFromClient.containsKey("nickName")){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
                     String clientNickName = (String) dataFromClient.get("nickName");
 
                     boolean operationResult = handleGetUsername(output, clientNickName);
@@ -455,6 +523,7 @@ public class Handler extends Thread{
                 default: { // request with unknown type is bad request
                     // TODO: default
                     handleBadRequest(output);
+                    Log.write("SUCESSFULLY HANDLED BAD REQUEST");
                     break;
                 }
             }
@@ -465,12 +534,6 @@ public class Handler extends Thread{
         }catch (ParseException e) { // wrong request
             System.out.println("EXCEPTION WHILE PARSING JSON FROM REQUEST");
             // TODO: handle wrong request
-            try {
-                handleBadRequest(this.socket.getOutputStream());
-            } catch (IOException ex) {
-                Log.write("SOME ERROR WHILE HANDLING BAD REQUEST");
-                return;
-            }
             Log.write("SUCESSFULLY HANDLED BAD REQUEST");
             return;
         }
