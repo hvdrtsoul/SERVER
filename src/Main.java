@@ -11,7 +11,7 @@ import java.security.PublicKey;
 
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main1(String[] args) {
 
         ANomalUSProvider anomalus = new ANomalUSProvider();
 
@@ -28,7 +28,7 @@ public class Main {
 
     }
 
-    public static void main1(String[] args) {
+    public static void main(String[] args) {
         OUTSiDE server = new OUTSiDE(9674);
 
         server.start();

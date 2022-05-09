@@ -68,6 +68,8 @@ public class Constants {
     public static final String SESSION_HEADER = "session";
     public static final String NOT_CONNECTED_MESSAGE = "not_connected";
 
+    public static final String BAD_REQUEST_MESSAGE = "bad_request";
+
     public static final String AUTH_USER_DOES_NOT_EXIST = "no_such_user";
     public static final String AUTH_PUBLIC_KEY_NOT_FOUND = "key_not_found";
     public static final String AUTH_CHALLENGE_HEADER = "challenge";

@@ -174,6 +174,14 @@ public class Handler extends Thread{
         sendResponse(output, jsonResponse.toJSONString());
     }
 
+    private void handleBadRequest(OutputStream output){
+        JSONObject jsonRespose = new JSONObject();
+
+        jsonRespose.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+        jsonRespose.put(Constants.ADDITIONAL_INFO_HEADER, Constants.BAD_REQUEST_MESSAGE);
+        sendResponse(output, jsonRespose.toJSONString());
+    }
+
     private boolean handleAuth(OutputStream output, String userName){
         DatabaseHandler database = new DatabaseHandler();
         JSONObject jsonResponse = new JSONObject();
@@ -425,7 +433,6 @@ public class Handler extends Thread{
                     break;
                 }
                 case("get_username"): {
-                    // TODO: get_username
                     DatabaseHandler database = new DatabaseHandler();
                     String sharedKey = database.getSharedKey(clientIp);
 
@@ -439,21 +446,33 @@ public class Handler extends Thread{
 
                     boolean operationResult = handleGetUsername(output, clientNickName);
 
+                    if(operationResult)
+                        Log.write("FOUND USERNAME FOR NICKNAME " + clientNickName);
+                    else
+                        Log.write("ERROR WHILE TRYING TO FIND USERNAME FOR NICKNAME " + clientNickName);
                     break;
                 }
-                default: {
+                default: { // request with unknown type is bad request
                     // TODO: default
+                    handleBadRequest(output);
                     break;
                 }
             }
 
-        }catch(IOException e){
+        }catch(IOException e){ // stream is closed or something???
             System.out.println("INPUT-OUTPUT EXCEPTION WHILE READING REQUEST");
             e.printStackTrace();
-
-        }catch (ParseException e) {
+        }catch (ParseException e) { // wrong request
             System.out.println("EXCEPTION WHILE PARSING JSON FROM REQUEST");
-            e.printStackTrace();
+            // TODO: handle wrong request
+            try {
+                handleBadRequest(this.socket.getOutputStream());
+            } catch (IOException ex) {
+                Log.write("SOME ERROR WHILE HANDLING BAD REQUEST");
+                return;
+            }
+            Log.write("SUCESSFULLY HANDLED BAD REQUEST");
+            return;
         }
     }
 }
