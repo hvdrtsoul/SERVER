@@ -1,7 +1,10 @@
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.sql.Connection;
 
 import static java.lang.System.currentTimeMillis;
+import static java.lang.System.in;
 
 public class DatabaseHandler extends DatabaseConfig {
     Connection databaseConnection;
@@ -493,6 +496,41 @@ public class DatabaseHandler extends DatabaseConfig {
             System.out.println("CLASS NOT FOUND EXCEPTION WHILE SETTING NEW SESSION FOR USER " + userName);
             return false;
         }
+    }
+
+    public long saveMessage(String to, String from, String type, String data){
+        String insert = "INSERT INTO " + Constants.MESSAGES_TABLE + " (`" +
+                Constants.MESSAGES_TO + "`,`" + Constants.MESSAGES_FROM + "`,`" +
+                Constants.MESSAGES_TYPE + "`,`" + Constants.MESSAGES_TIMESTAMP + "`,`" + Constants.MESSAGES_DATA + "`)" +
+                " VALUES(?, ?, ?, ?, ?)";
+
+        long sentTime = (currentTimeMillis() / 1000L);
+
+        Sanitizer sanitizer = new Sanitizer();
+        byte[] unSanitizedData = sanitizer.unSanitize(data);
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(insert)){
+            preparedStatement.setString(1, to);
+            preparedStatement.setString(2, from);
+            preparedStatement.setString(3, type);
+            preparedStatement.setLong(4, sentTime);
+            preparedStatement.setBinaryStream(5, new ByteArrayInputStream(unSanitizedData), unSanitizedData.length);
+
+            preparedStatement.executeUpdate();
+            return sentTime;
+        }catch (SQLException e){
+            System.out.println("SQL EXCEPTION WHILE SAVING MESSAGE");
+            e.printStackTrace();
+            return -1;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE SAVING MESSAGE");
+            e.printStackTrace();
+            return -1;
+        }
+
+
+
+
     }
 
 

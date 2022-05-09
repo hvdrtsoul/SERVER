@@ -10,6 +10,7 @@ import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 public class Handler extends Thread{
 
@@ -287,6 +288,55 @@ public class Handler extends Thread{
 
     }
 
+    private boolean handleSend(OutputStream output, String session, String to, String from, String type, String data){
+        SessionHandler sessionHandler = new SessionHandler();
+        DatabaseHandler database = new DatabaseHandler();
+        UserNameHandler userNameHandler = new UserNameHandler();
+        JSONObject jsonResponse = new JSONObject();
+
+        if(!database.userExists(to)){ // if recipient does not exist
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SEND_RECIPIENT_DOES_NOT_EXIST);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        if(!database.userExists(from)){ // if sender does not exist
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.INCORRECT_SESSION);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        if(!sessionHandler.checkAuth(session, from)){ // if sender is not authorized
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.INCORRECT_SESSION);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        if(!Arrays.asList(Constants.SEND_MESSAGE_TYPES).contains(type)){ // if message type is unknown
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SEND_UNKNOWN_MESSAGE_TYPE);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        long sentTime = database.saveMessage(to, from, type, data);
+
+        if(sentTime == -1){ // message was not saved
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SOMETHING_WENT_WRONG_MESSAGE);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }else{ // everything's okay
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
+            jsonResponse.put(Constants.SEND_TIMESTAMP_HEADER, String.valueOf(sentTime));
+            sendResponse(output, jsonResponse.toJSONString());
+            return true;
+        }
+    }
+
     private JSONObject getDataFromClient(Object encodedDataString, String sharedKey){
 
         ANomalUSProvider anomalus = new ANomalUSProvider();
@@ -480,7 +530,42 @@ public class Handler extends Thread{
                     break;
                 }
                 case ("send"): {
-                    // TODO: send-request
+                    DatabaseHandler database = new DatabaseHandler();
+                    String sharedKey = database.getSharedKey(clientIp);
+
+                    if(sharedKey == Constants.CONNECTION_NOT_FOUND_MESSAGE){
+                        handleNotConnected(output);
+                        break;
+                    }
+
+                    JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+
+                    if(dataFromClient == null){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
+                    if(!dataFromClient.containsKey("to") || !dataFromClient.containsKey("from") ||
+                            !dataFromClient.containsKey("type") || !dataFromClient.containsKey("data") ||
+                            !dataFromClient.containsKey("session")){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
+                    String clientSession = (String)dataFromClient.get("session");
+                    String clientTo = (String)dataFromClient.get("to");
+                    String clientFrom = (String)dataFromClient.get("from");
+                    String clientType = (String)dataFromClient.get("type");
+                    String clientData = (String)dataFromClient.get("data"); // sanitized BLOB
+
+                    boolean operationResult = handleSend(output, clientSession, clientTo, clientFrom, clientType, clientData);
+
+                    if(operationResult)
+                        Log.write("SENT MESSAGE FROM " + clientFrom + " TO " + clientTo);
+                    else
+                        Log.write("FAILED TO SEND MESSAGE FROM " + clientFrom + " TO " + clientTo);
                     break;
                 }
                 case("check_mail"): {

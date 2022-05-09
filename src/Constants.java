@@ -25,13 +25,9 @@ public class Constants {
 
     public static final String GET_USERNAME_USERNAME_HEADER = "username";
 
-
-    public static final String PENDING_MESSAGES_TABLE = "pending_messages";
-    public static final String PENDING_MESSAGES_TO = "to";
-    public static final String PENDING_MESSAGES_ID = "id";
-
     public static final String MESSAGES_TABLE = "messages";
     public static final String MESSAGES_ID = "id";
+    public static final String MESSAGES_TO = "to";
     public static final String MESSAGES_FROM = "from";
     public static final String MESSAGES_TYPE = "type";
     public static final String MESSAGES_TIMESTAMP = "timestamp";
@@ -82,4 +78,12 @@ public class Constants {
     public static final String TWISTED_SECRET_NOT_FOUND = "auth_not_found";
     public static final String TWISTED_NEW_SESSION_HEADER = "new_session";
     public static final String TWISTED_WRONG_SOLUTION = "wrong_solution";
+
+    public static final String SEND_RECIPIENT_DOES_NOT_EXIST = "no_recipient";
+    public static final String[] SEND_MESSAGE_TYPES = {"text", "image", "request", "answer"};
+    public static final String SEND_UNKNOWN_MESSAGE_TYPE = "bad_type";
+    public static final String SEND_TIMESTAMP_HEADER = "timestamp";
+
+
+
 }
