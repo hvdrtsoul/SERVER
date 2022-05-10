@@ -10,6 +10,9 @@ import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.sql.Blob;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Arrays;
 
 public class Handler extends Thread{
@@ -101,7 +104,7 @@ public class Handler extends Thread{
             return false;
         }
         else{ // we've got the session
-            database.updateLastActive(name);
+            database.insertLastActive(name);
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
             jsonResponse.put(Constants.SESSION_HEADER, result);
             sendResponse(output, jsonResponse.toJSONString());
@@ -243,6 +246,9 @@ public class Handler extends Thread{
             if(database.setSession(userName, newSession)){ // if we sucessfully added new session
                 jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
                 jsonResponse.put(Constants.TWISTED_NEW_SESSION_HEADER, newSession);
+
+                database.updateLastActive(userName); // updating last active for this user
+
                 sendResponse(output, jsonResponse.toJSONString());
                 return true;
             }else{ // if something went wrong when adding new session
@@ -369,6 +375,48 @@ public class Handler extends Thread{
         jsonResponse.put(Constants.CHECK_MAIL_MESSAGES_HEADER_NAME, mail);
         sendResponse(output, jsonResponse.toJSONString());
         return true;
+    }
+
+    private boolean handleGetMessage(OutputStream output, String userName, String session, String id) {
+        SessionHandler sessionHandler = new SessionHandler();
+        DatabaseHandler database = new DatabaseHandler();
+        JSONObject jsonResponse = new JSONObject();
+
+        if(!database.userExists(userName)){ // if user does not exist
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.INCORRECT_SESSION);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        if(!sessionHandler.checkAuth(session, userName)){ // if user is not authorized
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.INCORRECT_SESSION);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
+
+        if(database.messageExistsAndMine(userName, id)){
+            jsonResponse = database.getMessageById(id);
+
+            sendResponse(output, jsonResponse.toJSONString()); // if something went wrong jsonResponse
+                                                               // contains SOMETHING_WENT_WRONG response
+
+            if(((String)(jsonResponse.get(Constants.RESPONSE_HEADER_NAME))).equals(Constants.RESPONSE_HEADER_ERROR))
+                return false;
+
+            // otherwise we've sent OKAY-result response
+            // at this point message is successfully sent and we can delete it from database
+
+            database.removeMessageById(id);
+
+            return true;
+        }else{
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.GET_MESSAGE_FAIL);
+            sendResponse(output, jsonResponse.toJSONString());
+            return false;
+        }
     }
 
     private JSONObject getDataFromClient(Object encodedDataString, String sharedKey){
@@ -603,8 +651,6 @@ public class Handler extends Thread{
                     break;
                 }
                 case("check_mail"): {
-                    // TODO: check_mail
-
                     DatabaseHandler database = new DatabaseHandler();
                     String sharedKey = database.getSharedKey(clientIp);
 
@@ -672,6 +718,41 @@ public class Handler extends Thread{
                         Log.write("ERROR WHILE TRYING TO FIND USERNAME FOR NICKNAME " + clientNickName);
                     break;
                 }
+                case("get_message"): {
+                    DatabaseHandler database = new DatabaseHandler();
+                    String sharedKey = database.getSharedKey(clientIp);
+
+                    if(sharedKey == Constants.CONNECTION_NOT_FOUND_MESSAGE){
+                        handleNotConnected(output);
+                        break;
+                    }
+
+                    JSONObject dataFromClient = getDataFromClient(requestData, sharedKey);
+
+                    if(dataFromClient == null){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
+                    if(!dataFromClient.containsKey("userName") || !dataFromClient.containsKey("session") || !dataFromClient.containsKey("id")){
+                        handleBadRequest(output);
+                        Log.write("ERROR WHILE PARSING REQUEST INFO");
+                        return;
+                    }
+
+                    String clientUserName = (String)dataFromClient.get("userName");
+                    String clientSession = (String)dataFromClient.get("session");
+                    String clientId = (String)dataFromClient.get("id");
+
+                    boolean operationResult = handleGetMessage(output, clientUserName, clientSession, clientId);
+
+                    if(operationResult)
+                        Log.write("GOT MESSAGE WITH ID " + clientId + " FOR USER " + clientUserName);
+                    else
+                        Log.write("ERROR WHILE GETTING MESSAGE WITH ID " + clientId + " FOR USER " + clientUserName);
+                    break;
+                }
                 default: { // request with unknown type is bad request
                     handleBadRequest(output);
                     Log.write("SUCESSFULLY HANDLED BAD REQUEST");
@@ -684,9 +765,9 @@ public class Handler extends Thread{
             e.printStackTrace();
         }catch (ParseException e) { // wrong request
             System.out.println("EXCEPTION WHILE PARSING JSON FROM REQUEST");
+            e.printStackTrace();
             Log.write("SUCESSFULLY HANDLED BAD REQUEST");
             return;
         }
     }
-
 }

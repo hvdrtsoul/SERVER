@@ -14,9 +14,9 @@ public class OUTSiDE {
 
     void start(){
         Log.write("STARTING SERVER UP...");
-        //CleanerDaemon cleanerDaemon = new CleanerDaemon();
-        //cleanerDaemon.start();
-        //Log.write("CLEANER DAEMON STARTED");
+        CleanerDaemon cleanerDaemon = new CleanerDaemon();
+        cleanerDaemon.start();
+        Log.write("CLEANER DAEMON STARTED");
 
         Log.write("SERVER STARTED");
         try(ServerSocket server = new ServerSocket(this.port)){

@@ -36,6 +36,8 @@ public class Constants {
     public static final int ADDITIONAL_UPDATE_TIME = 300;
     public static final int ADDITIONAL_LOGGED_IN_TIME = 600;
     public static final long CLEAN_CONNECTIONS_TIME = 600000L;
+    public static final long CLEAN_INACTIVE_USER_TIME = 2592000L; // 30 days
+    public static final long CONSIDER_INACTIVE_TIME = 5184000L; // 60 days
 
     public static final String RESPONSE_HEADER_NAME = "result";
     public static final String RESPONSE_HEADER_OKAY = "OK";
@@ -87,4 +89,11 @@ public class Constants {
     public static final char CHECK_MAIL_SEPARATOR = ';';
     public static final String CHECK_MAIL_NO_MESSAGES = "no_mail";
     public static final String CHECK_MAIL_MESSAGES_HEADER_NAME = "messages";
+
+    public static final String GET_MESSAGE_FAIL = "no_such_message";
+    public static final String GET_MESSAGE_FROM_HEADER = "from";
+    public static final String GET_MESSAGE_TYPE_HEADER = "type";
+    public static final String GET_MESSAGE_TIMESTAMP_HEADER = "timestamp";
+    public static final String GET_MESSAGE_DATA_HEADER = "data";
+
 }

@@ -1,7 +1,10 @@
+import org.json.simple.JSONObject;
+
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.sql.Connection;
+import java.util.ArrayList;
 
 import static java.lang.System.currentTimeMillis;
 import static java.lang.System.in;
@@ -164,6 +167,73 @@ public class DatabaseHandler extends DatabaseConfig {
         }
     }
 
+    public void deleteUser(String userName){
+        String delete = "DELETE FROM " + Constants.USERS_TABLE + " WHERE "
+                + Constants.USERS_USER + " = ?";
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
+            preparedStatement.setString(1, userName);
+
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE DELETING USER " + userName);
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE DELETING USER " + userName);
+        }
+    }
+
+    public void deleteMessagesToAndFromUser(String userName){
+        String delete = "DELETE FROM " + Constants.MESSAGES_TABLE + " WHERE `"
+                + Constants.MESSAGES_TO + "` = ? OR `" + Constants.MESSAGES_FROM + "` = ?";
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
+            preparedStatement.setString(1, userName);
+            preparedStatement.setString(2, userName);
+
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE DELETING MESSAGES OF USER " + userName);
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE DELETING MESSAGES OF USER " + userName);
+        }
+    }
+
+    public void deleteUserNickname(String userName){
+        String delete = "DELETE FROM " + Constants.NICKNAMES_TABLE + " WHERE "
+                + Constants.NICKNAMES_USER + " = ?";
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
+            preparedStatement.setString(1, userName);
+
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE DELETING NICKNAME OF " + userName);
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE DELETING NICKNAME OF " + userName);
+        }
+    }
+
+    public ArrayList<String> getLongInactiveUsers(){
+        ArrayList<String> result = new ArrayList<>();
+
+        String select = "SELECT " + Constants.LAST_ACTIVE_USERNAME + "FROM " + Constants.LAST_ACTIVE_TABLE + " WHERE "
+                + Constants.LAST_ACTIVE_LAST_ACTIVE + " < ?";
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setLong(1, (currentTimeMillis() / 1000L) - Constants.CONSIDER_INACTIVE_TIME);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            while(resultSet.next()){
+                result.add(resultSet.getString(1));
+            }
+
+            return result;
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE CLEANING AUTH");
+            return null;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE CLEANING AUTH");
+            return null;
+        }
+    }
+
     public String addUser(String userName, String publicKey){
         String insertToUsers = "INSERT INTO " + Constants.USERS_TABLE + " (" +
                 Constants.USERS_USER + "," + Constants.USERS_PUBLIC_KEY + "," +
@@ -192,7 +262,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
     }
 
-    public boolean updateLastActive(String userName){
+    public boolean insertLastActive(String userName){
         String insertToLastActive = "INSERT INTO " + Constants.LAST_ACTIVE_TABLE + " (" +
                 Constants.LAST_ACTIVE_USERNAME + "," + Constants.LAST_ACTIVE_LAST_ACTIVE + ")" + "VALUES(?,?)";
 
@@ -531,7 +601,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
     public String checkMail(String userName){
         String select = "SELECT " + Constants.MESSAGES_ID + " FROM " + Constants.MESSAGES_TABLE +
-                " WHERE " + Constants.MESSAGES_TO + " = ?";
+                " WHERE `" + Constants.MESSAGES_TO + "` = ?";
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, userName);
@@ -559,6 +629,117 @@ public class DatabaseHandler extends DatabaseConfig {
         }
     }
 
+    public boolean messageExistsAndMine(String userName, String messageId){
+        String select = "SELECT `" + Constants.MESSAGES_TO + "` FROM " + Constants.MESSAGES_TABLE +
+                " WHERE `" + Constants.MESSAGES_ID + "` = ?";
 
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setString(1, messageId);
+            ResultSet result = preparedStatement.executeQuery();
 
+            StringBuilder resultBuilder = new StringBuilder();
+
+            while(result.next()){
+                resultBuilder.append(result.getString(1));
+            } // there's maximum ONE message with this id
+
+            if(resultBuilder.isEmpty()) // if there's no message with this id resultBuilder will be empty
+                return false; // message does not exist
+
+            if(resultBuilder.toString().equals(userName)) // if this message belongs to me
+                return true;
+            else // it belongs to someone else
+                return false;
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE GETTING MESSAGE WITH ID " + messageId + " FOR USER " + userName);
+            return false;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE GETTING MESSAGE WITH ID " + messageId + " FOR USER " + userName);
+            return false;
+        }
+    }
+
+    public JSONObject getMessageById(String messageId){
+
+        JSONObject jsonResponse = new JSONObject();
+        // this message DEFINETELY exists
+        String select = "SELECT * FROM " + Constants.MESSAGES_TABLE +
+                " WHERE `" + Constants.MESSAGES_ID + "` = ?";
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
+            preparedStatement.setString(1, messageId);
+            ResultSet messageInfo = preparedStatement.executeQuery();
+
+            messageInfo.next();
+
+            try {
+                jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
+                jsonResponse.put(Constants.GET_MESSAGE_FROM_HEADER, messageInfo.getString(Constants.MESSAGES_FROM));
+                jsonResponse.put(Constants.GET_MESSAGE_TYPE_HEADER, messageInfo.getString(Constants.MESSAGES_TYPE));
+                jsonResponse.put(Constants.GET_MESSAGE_TIMESTAMP_HEADER, String.valueOf(messageInfo.getLong(Constants.MESSAGES_TIMESTAMP)));
+
+                Blob byteData = messageInfo.getBlob(Constants.MESSAGES_DATA);
+                Sanitizer sanitizer = new Sanitizer();
+
+                jsonResponse.put(Constants.GET_MESSAGE_DATA_HEADER, sanitizer.sanitize(byteData.getBytes(1, (int)byteData.length())));
+
+                return jsonResponse;
+            }catch (SQLException e){
+                e.printStackTrace();
+                // something went wrong while obtaining message info
+                jsonResponse.clear();
+                jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+                jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SOMETHING_WENT_WRONG_MESSAGE);
+
+                return jsonResponse;
+            }
+
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE GETTING MESSAGE WITH ID " + messageId);
+            jsonResponse.clear();
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SOMETHING_WENT_WRONG_MESSAGE);
+
+            return jsonResponse;
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE GETTING MESSAGE WITH ID " + messageId);
+            jsonResponse.clear();
+            jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SOMETHING_WENT_WRONG_MESSAGE);
+
+            return jsonResponse;
+        }
+    }
+
+    public void removeMessageById(String id){
+        String delete = "DELETE FROM " + Constants.MESSAGES_TABLE+ " WHERE `" + Constants.MESSAGES_ID +
+                "` = ?";
+
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
+            preparedStatement.setString(1, id);
+
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE REMOVING A MESSAGE WITH ID " + id);
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE REMOVING A MESSAGE WITH ID " + id);
+        }
+    }
+
+    public void updateLastActive(String userName){
+
+        String update = "UPDATE " + Constants.LAST_ACTIVE_TABLE + " SET " +
+                Constants.LAST_ACTIVE_LAST_ACTIVE + " = " +  String.valueOf(currentTimeMillis() / 1000L) +
+                " WHERE " + Constants.LAST_ACTIVE_USERNAME +
+                " = ?";
+        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(update)){
+            preparedStatement.setString(1, userName);
+
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("SQL EXCEPTION WHILE UPDATING LAST ACTIVE FOR USER " + userName);
+        } catch (ClassNotFoundException e) {
+            System.out.println("CLASS NOT FOUND EXCEPTION WHILE UPDATING LAST ACTIVE FOR USER " + userName);
+        }
+    }
 }
