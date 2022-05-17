@@ -1,6 +1,7 @@
 import org.json.simple.JSONObject;
 
 import java.io.ByteArrayInputStream;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.sql.Connection;
@@ -659,7 +660,7 @@ public class DatabaseHandler extends DatabaseConfig {
         }
     }
 
-    public JSONObject getMessageById(String messageId){
+    public JSONObject getMessageById(String messageId, String sharedKey){
 
         JSONObject jsonResponse = new JSONObject();
         // this message DEFINETELY exists
@@ -674,14 +675,21 @@ public class DatabaseHandler extends DatabaseConfig {
 
             try {
                 jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
-                jsonResponse.put(Constants.GET_MESSAGE_FROM_HEADER, messageInfo.getString(Constants.MESSAGES_FROM));
-                jsonResponse.put(Constants.GET_MESSAGE_TYPE_HEADER, messageInfo.getString(Constants.MESSAGES_TYPE));
-                jsonResponse.put(Constants.GET_MESSAGE_TIMESTAMP_HEADER, String.valueOf(messageInfo.getLong(Constants.MESSAGES_TIMESTAMP)));
+
+                JSONObject data = new JSONObject();
+                data.put(Constants.GET_MESSAGE_FROM_HEADER, messageInfo.getString(Constants.MESSAGES_FROM));
+                data.put(Constants.GET_MESSAGE_TYPE_HEADER, messageInfo.getString(Constants.MESSAGES_TYPE));
+                data.put(Constants.GET_MESSAGE_TIMESTAMP_HEADER, String.valueOf(messageInfo.getLong(Constants.MESSAGES_TIMESTAMP)));
 
                 Blob byteData = messageInfo.getBlob(Constants.MESSAGES_DATA);
                 Sanitizer sanitizer = new Sanitizer();
 
-                jsonResponse.put(Constants.GET_MESSAGE_DATA_HEADER, sanitizer.sanitize(byteData.getBytes(1, (int)byteData.length())));
+                data.put(Constants.GET_MESSAGE_DATA_HEADER, sanitizer.sanitize(byteData.getBytes(1, (int)byteData.length())));
+
+                ANomalUSProvider anomalus = new ANomalUSProvider();
+                byte[] encodedBytes = anomalus.encodeBytes(data.toJSONString().getBytes(StandardCharsets.UTF_8), new BigInteger(sharedKey));
+
+                jsonResponse.put(Constants.RESPONSE_HEADER_DATA, sanitizer.sanitize(encodedBytes));
 
                 return jsonResponse;
             }catch (SQLException e){

@@ -46,7 +46,10 @@ public class Handler extends Thread{
 
         if(operationResult){
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
-            jsonResponse.put(Constants.RESPONSE_PUBLIC_DFH_KEY_HEADER, myPublicKey);
+            JSONObject data = new JSONObject();
+            data.put(Constants.RESPONSE_PUBLIC_DFH_KEY_HEADER, myPublicKey);
+
+            jsonResponse.put(Constants.RESPONSE_HEADER_DATA, data);
         }else{
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
         }
@@ -72,7 +75,7 @@ public class Handler extends Thread{
         return;
     }
 
-    private boolean handleJoinUs(OutputStream output, String name, String publicKey){
+    private boolean handleJoinUs(OutputStream output, String name, String publicKey, String sharedKey){
 
         DatabaseHandler database = new DatabaseHandler();
         UserNameHandler userNameHandler = new UserNameHandler();
@@ -106,7 +109,14 @@ public class Handler extends Thread{
         else{ // we've got the session
             database.insertLastActive(name);
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
-            jsonResponse.put(Constants.SESSION_HEADER, result);
+
+            JSONObject data = new JSONObject();
+            data.put(Constants.SESSION_HEADER, result);
+            Sanitizer sanitizer = new Sanitizer();
+            ANomalUSProvider anomalus = new ANomalUSProvider();
+            byte[] encodedBytes = anomalus.encodeBytes(data.toJSONString().getBytes(StandardCharsets.UTF_8), new BigInteger(sharedKey));
+
+            jsonResponse.put(Constants.RESPONSE_HEADER_DATA, sanitizer.sanitize(encodedBytes));
             sendResponse(output, jsonResponse.toJSONString());
             return true;
         }
@@ -186,7 +196,7 @@ public class Handler extends Thread{
         sendResponse(output, jsonRespose.toJSONString());
     }
 
-    private boolean handleAuth(OutputStream output, String userName){
+    private boolean handleAuth(OutputStream output, String userName, String sharedKey){
         DatabaseHandler database = new DatabaseHandler();
         JSONObject jsonResponse = new JSONObject();
 
@@ -212,14 +222,21 @@ public class Handler extends Thread{
         }
         else {
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
-            jsonResponse.put(Constants.AUTH_CHALLENGE_HEADER, sanitizer.sanitize(byteChallenge));
+
+            JSONObject data = new JSONObject();
+            data.put(Constants.AUTH_CHALLENGE_HEADER, sanitizer.sanitize(byteChallenge));
+
+            ANomalUSProvider anomalus = new ANomalUSProvider();
+            byte[] encodedBytes = anomalus.encodeBytes(data.toJSONString().getBytes(StandardCharsets.UTF_8), new BigInteger(sharedKey));
+
+            jsonResponse.put(Constants.RESPONSE_HEADER_DATA, sanitizer.sanitize(encodedBytes));
             sendResponse(output, jsonResponse.toJSONString());
             return true;
         }
 
     }
 
-    private boolean handleTwisted(OutputStream output, String userName, String solution){
+    private boolean handleTwisted(OutputStream output, String userName, String solution, String sharedKey){
         DatabaseHandler database = new DatabaseHandler();
         JSONObject jsonResponse = new JSONObject();
 
@@ -245,7 +262,15 @@ public class Handler extends Thread{
 
             if(database.setSession(userName, newSession)){ // if we sucessfully added new session
                 jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
-                jsonResponse.put(Constants.TWISTED_NEW_SESSION_HEADER, newSession);
+
+                JSONObject data = new JSONObject();
+                data.put(Constants.TWISTED_NEW_SESSION_HEADER, newSession);
+
+                Sanitizer sanitizer = new Sanitizer();
+                ANomalUSProvider anomalus = new ANomalUSProvider();
+                byte[] encodedBytes = anomalus.encodeBytes(data.toJSONString().getBytes(StandardCharsets.UTF_8), new BigInteger(sharedKey));
+
+                jsonResponse.put(Constants.RESPONSE_HEADER_DATA, sanitizer.sanitize(encodedBytes));
 
                 database.updateLastActive(userName); // updating last active for this user
 
@@ -267,7 +292,7 @@ public class Handler extends Thread{
 
     }
 
-    private boolean handleGetUsername(OutputStream output, String nickName){
+    private boolean handleGetUsername(OutputStream output, String nickName, String sharedKey){
         DatabaseHandler database = new DatabaseHandler();
         JSONObject jsonResponse = new JSONObject();
 
@@ -287,14 +312,22 @@ public class Handler extends Thread{
             return false;
         }else{
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
-            jsonResponse.put(Constants.GET_USERNAME_USERNAME_HEADER, userName);
+
+            JSONObject data = new JSONObject();
+            Sanitizer sanitizer = new Sanitizer();
+            data.put(Constants.GET_USERNAME_USERNAME_HEADER, userName);
+            ANomalUSProvider anomalus = new ANomalUSProvider();
+            byte[] encodedBytes = anomalus.encodeBytes(data.toJSONString().getBytes(StandardCharsets.UTF_8), new BigInteger(sharedKey));
+
+            jsonResponse.put(Constants.RESPONSE_HEADER_DATA, sanitizer.sanitize(encodedBytes));
+
             sendResponse(output, jsonResponse.toJSONString());
             return true;
         }
 
     }
 
-    private boolean handleSend(OutputStream output, String session, String to, String from, String type, String data){
+    private boolean handleSend(OutputStream output, String session, String to, String from, String type, String data, String sharedKey){
         SessionHandler sessionHandler = new SessionHandler();
         DatabaseHandler database = new DatabaseHandler();
         JSONObject jsonResponse = new JSONObject();
@@ -308,7 +341,7 @@ public class Handler extends Thread{
 
         if(!database.userExists(from)){ // if sender does not exist
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
-            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.INCORRECT_SESSION);
+            jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.INCORRECT_SESSION+"NOSENDER");
             sendResponse(output, jsonResponse.toJSONString());
             return false;
         }
@@ -336,13 +369,22 @@ public class Handler extends Thread{
             return false;
         }else{ // everything's okay
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
-            jsonResponse.put(Constants.SEND_TIMESTAMP_HEADER, String.valueOf(sentTime));
+            JSONObject dataJSON = new JSONObject();
+
+            dataJSON.put(Constants.SEND_TIMESTAMP_HEADER, String.valueOf(sentTime));
+
+            Sanitizer sanitizer = new Sanitizer();
+            ANomalUSProvider anomalus = new ANomalUSProvider();
+            byte[] encodedBytes = anomalus.encodeBytes(dataJSON.toJSONString().getBytes(StandardCharsets.UTF_8), new BigInteger(sharedKey));
+
+            jsonResponse.put(Constants.RESPONSE_HEADER_DATA, sanitizer.sanitize(encodedBytes));
+
             sendResponse(output, jsonResponse.toJSONString());
             return true;
         }
     }
 
-    private boolean handleCheckMail(OutputStream output, String userName, String session) {
+    private boolean handleCheckMail(OutputStream output, String userName, String session, String sharedKey) {
         SessionHandler sessionHandler = new SessionHandler();
         DatabaseHandler database = new DatabaseHandler();
         JSONObject jsonResponse = new JSONObject();
@@ -372,12 +414,20 @@ public class Handler extends Thread{
         // otherwise everyting's okay
 
         jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
-        jsonResponse.put(Constants.CHECK_MAIL_MESSAGES_HEADER_NAME, mail);
+
+        JSONObject data = new JSONObject();
+        data.put(Constants.CHECK_MAIL_MESSAGES_HEADER_NAME, mail);
+        Sanitizer sanitizer = new Sanitizer();
+        ANomalUSProvider anomalus = new ANomalUSProvider();
+        byte[] encodedBytes = anomalus.encodeBytes(data.toJSONString().getBytes(StandardCharsets.UTF_8), new BigInteger(sharedKey));
+
+        jsonResponse.put(Constants.RESPONSE_HEADER_DATA, sanitizer.sanitize(encodedBytes));
+
         sendResponse(output, jsonResponse.toJSONString());
         return true;
     }
 
-    private boolean handleGetMessage(OutputStream output, String userName, String session, String id) {
+    private boolean handleGetMessage(OutputStream output, String userName, String session, String id, String sharedKey) {
         SessionHandler sessionHandler = new SessionHandler();
         DatabaseHandler database = new DatabaseHandler();
         JSONObject jsonResponse = new JSONObject();
@@ -397,7 +447,7 @@ public class Handler extends Thread{
         }
 
         if(database.messageExistsAndMine(userName, id)){
-            jsonResponse = database.getMessageById(id);
+            jsonResponse = database.getMessageById(id, sharedKey);
 
             sendResponse(output, jsonResponse.toJSONString()); // if something went wrong jsonResponse
                                                                // contains SOMETHING_WENT_WRONG response
@@ -500,7 +550,7 @@ public class Handler extends Thread{
 
                     String clientUserName = (String) dataFromClient.get("userName");
 
-                    boolean operationResult = handleAuth(output, clientUserName);
+                    boolean operationResult = handleAuth(output, clientUserName, sharedKey);
 
                     if(operationResult)
                         Log.write("CREATED AUTH WITH " + clientUserName);
@@ -534,7 +584,7 @@ public class Handler extends Thread{
                     String clientUserName = (String) dataFromClient.get("userName");
                     String clientSolution = (String) dataFromClient.get("solution");
 
-                    boolean operationResult = handleTwisted(output, clientUserName, clientSolution);
+                    boolean operationResult = handleTwisted(output, clientUserName, clientSolution, sharedKey);
 
                     if(operationResult)
                         Log.write("SUCCESSFULLY AUTH WITH " + clientUserName);
@@ -568,7 +618,7 @@ public class Handler extends Thread{
                     String clientUserName = (String) dataFromClient.get("userName");
                     String clientPublicKey = (String) dataFromClient.get("publicKey");
 
-                    boolean operationResult = handleJoinUs(output, clientUserName, clientPublicKey);
+                    boolean operationResult = handleJoinUs(output, clientUserName, clientPublicKey, sharedKey);
 
                     if (operationResult)
                         Log.write("ADDED USER " + clientUserName);
@@ -642,7 +692,7 @@ public class Handler extends Thread{
                     String clientType = (String)dataFromClient.get("type");
                     String clientData = (String)dataFromClient.get("data"); // sanitized BLOB
 
-                    boolean operationResult = handleSend(output, clientSession, clientTo, clientFrom, clientType, clientData);
+                    boolean operationResult = handleSend(output, clientSession, clientTo, clientFrom, clientType, clientData, sharedKey);
 
                     if(operationResult)
                         Log.write("SENT MESSAGE FROM " + clientFrom + " TO " + clientTo);
@@ -676,7 +726,7 @@ public class Handler extends Thread{
                     String clientUserName = (String)dataFromClient.get("userName");
                     String clientSession = (String)dataFromClient.get("session");
 
-                    boolean operationResult = handleCheckMail(output, clientUserName, clientSession);
+                    boolean operationResult = handleCheckMail(output, clientUserName, clientSession, sharedKey);
 
                     if(operationResult)
                         Log.write("CHECKED MAIL FOR " + clientUserName);
@@ -710,7 +760,7 @@ public class Handler extends Thread{
 
                     String clientNickName = (String) dataFromClient.get("nickName");
 
-                    boolean operationResult = handleGetUsername(output, clientNickName);
+                    boolean operationResult = handleGetUsername(output, clientNickName, sharedKey);
 
                     if(operationResult)
                         Log.write("FOUND USERNAME FOR NICKNAME " + clientNickName);
@@ -745,7 +795,7 @@ public class Handler extends Thread{
                     String clientSession = (String)dataFromClient.get("session");
                     String clientId = (String)dataFromClient.get("id");
 
-                    boolean operationResult = handleGetMessage(output, clientUserName, clientSession, clientId);
+                    boolean operationResult = handleGetMessage(output, clientUserName, clientSession, clientId, sharedKey);
 
                     if(operationResult)
                         Log.write("GOT MESSAGE WITH ID " + clientId + " FOR USER " + clientUserName);

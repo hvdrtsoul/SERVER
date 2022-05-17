@@ -42,6 +42,10 @@ public class Constants {
     public static final String RESPONSE_HEADER_NAME = "result";
     public static final String RESPONSE_HEADER_OKAY = "OK";
     public static final String RESPONSE_HEADER_ERROR = "ERR";
+    public static final String RESPONSE_HEADER_DATA = "data";
+
+    public static final String SERVER_HOST = "45.142.36.14";
+    public static final String LOCAL_HOST = "localhost";
 
     public static final String RESPONSE_PUBLIC_DFH_KEY_HEADER = "publicKey";
 
@@ -62,6 +66,7 @@ public class Constants {
 
     public static final String ADDITIONAL_INFO_HEADER = "info";
     public static final String SOMETHING_WENT_WRONG_MESSAGE = "something_wrong";
+    public static final String UNKNOWN_HOST_MESSAGE = "unknown_host";
     public static final String INCORRECT_SESSION = "not_authorized";
     public static final String SESSION_HEADER = "session";
     public static final String NOT_CONNECTED_MESSAGE = "not_connected";
@@ -95,5 +100,19 @@ public class Constants {
     public static final String GET_MESSAGE_TYPE_HEADER = "type";
     public static final String GET_MESSAGE_TIMESTAMP_HEADER = "timestamp";
     public static final String GET_MESSAGE_DATA_HEADER = "data";
+
+    public static final String REQUEST_TYPE_HEADER = "request-type";
+    public static final String MEET_REQUEST_HEADER = "meet";
+    public static final String REQUEST_DATA_HEADER = "data";
+    public static final String KEEP_ALIVE_REQUEST_HEADER = "keep_alive";
+    public static final String AUTH_REQUEST_HEADER = "auth";
+    public static final String TWISTED_REQUEST_HEADER = "twisted";
+    public static final String JOIN_US_REQUEST_HEADER = "join_us";
+    public static final String HYPNOTIZE_REQUEST_HEADER = "hypnotize";
+    public static final String SEND_REQUEST_HEADER = "send";
+    public static final String CHECK_MAIL_REQUEST_HEADER = "check_mail";
+    public static final String GET_USERNAME_REQUEST_HEADER = "get_username";
+    public static final String GET_MESSAGE_REQUEST_HEADER = "get_message";
+
 
 }
