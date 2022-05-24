@@ -1,4 +1,6 @@
 
+import org.bouncycastle.util.test.FixedSecureRandom;
+
 import java.security.*;
 
 public class RSAKeyProvider {
@@ -6,8 +8,9 @@ public class RSAKeyProvider {
     private PrivateKey privateKey;
     private PublicKey publicKey;
 
-    public RSAKeyProvider(){
-        SecureRandom random = new SecureRandom();
+    public RSAKeyProvider(byte[] seed){
+        FixedSecureRandom random = new FixedSecureRandom(seed);
+
         KeyPairGenerator generator = null;
         try {
             generator = KeyPairGenerator.getInstance("RSA");

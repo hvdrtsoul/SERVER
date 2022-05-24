@@ -55,7 +55,7 @@ public class RSAProvider {
 
     public byte[] encrypt(byte[] data, String sanitizedPublicKey){
         try {
-            Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            Cipher cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.ENCRYPT_MODE, getPublicKey(sanitizedPublicKey));
             return cipher.doFinal(data);
         } catch (NoSuchAlgorithmException e) {
@@ -74,7 +74,7 @@ public class RSAProvider {
 
     public byte[] decrypt(byte[] data, String sanitizedPrivateKey){
         try {
-            Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            Cipher cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.DECRYPT_MODE, getPrivateKey(sanitizedPrivateKey));
             return cipher.doFinal(data);
         } catch (NoSuchAlgorithmException e) {

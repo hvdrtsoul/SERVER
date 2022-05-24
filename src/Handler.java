@@ -24,6 +24,9 @@ public class Handler extends Thread{
     }
 
     private void sendResponse(OutputStream output, String response){
+
+        //System.out.println("RESPONSE IS " + response);
+
         PrintStream out = new PrintStream(output);
 
         out.print(response + '\n');
@@ -209,10 +212,8 @@ public class Handler extends Thread{
 
         UserNameHandler userNameHandler = new UserNameHandler();
         Sanitizer sanitizer = new Sanitizer();
-        RSAProvider rsaProvider = new RSAProvider();
 
         String secret = userNameHandler.generateSecret();
-        byte[] byteChallenge = rsaProvider.encrypt(secret.getBytes(StandardCharsets.UTF_8), database.getPublicKey(userName));
 
         if(!database.addAuth(userName, secret)){
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
@@ -222,11 +223,15 @@ public class Handler extends Thread{
         }
         else {
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
+            ANomalUSProvider anomalus = new ANomalUSProvider();
 
             JSONObject data = new JSONObject();
-            data.put(Constants.AUTH_CHALLENGE_HEADER, sanitizer.sanitize(byteChallenge));
 
-            ANomalUSProvider anomalus = new ANomalUSProvider();
+            byte[] encodedSecret = anomalus.encodeBytes(secret.getBytes(StandardCharsets.UTF_8), new BigInteger(database.getPublicKey(userName)));
+
+            data.put(Constants.AUTH_CHALLENGE_HEADER, sanitizer.sanitize(encodedSecret));
+
+
             byte[] encodedBytes = anomalus.encodeBytes(data.toJSONString().getBytes(StandardCharsets.UTF_8), new BigInteger(sharedKey));
 
             jsonResponse.put(Constants.RESPONSE_HEADER_DATA, sanitizer.sanitize(encodedBytes));
@@ -236,11 +241,11 @@ public class Handler extends Thread{
 
     }
 
-    private boolean handleTwisted(OutputStream output, String userName, String solution, String sharedKey){
+    private boolean handleTwisted(OutputStream output, String userName, String solution, String sharedKey) {
         DatabaseHandler database = new DatabaseHandler();
         JSONObject jsonResponse = new JSONObject();
 
-        if(!database.userExists(userName)){ // if user does not exist
+        if (!database.userExists(userName)) { // if user does not exist
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
             jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.TWISTED_USER_DOES_NOT_EXIST);
             sendResponse(output, jsonResponse.toJSONString());
@@ -249,18 +254,18 @@ public class Handler extends Thread{
 
         String secret = database.getSecret(userName, System.currentTimeMillis() / 1000L);
 
-        if(secret.equals(Constants.TWISTED_SECRET_NOT_FOUND)){ // secret not found
+        if (secret.equals(Constants.TWISTED_SECRET_NOT_FOUND)) { // secret not found
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
             jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.TWISTED_SECRET_NOT_FOUND);
             sendResponse(output, jsonResponse.toJSONString());
             return false;
-        }else if(secret.equals(solution)){ // if challenge solved right
+        } else if (secret.equals(solution)) { // if challenge solved right
             SessionHandler sessionHandler = new SessionHandler();
             String newSession = sessionHandler.generateSession();
 
             database.removeAuth(userName); // we remove this auth attempt - challenge was solved
 
-            if(database.setSession(userName, newSession)){ // if we sucessfully added new session
+            if (database.setSession(userName, newSession)) { // if we sucessfully added new session
                 jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_OKAY);
 
                 JSONObject data = new JSONObject();
@@ -276,21 +281,21 @@ public class Handler extends Thread{
 
                 sendResponse(output, jsonResponse.toJSONString());
                 return true;
-            }else{ // if something went wrong when adding new session
+            } else { // if something went wrong when adding new session
                 jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
                 jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.SOMETHING_WENT_WRONG_MESSAGE);
                 sendResponse(output, jsonResponse.toJSONString());
                 return false;
             }
-        }else{ // if challenge solved wrong
+        } else { // if challenge solved wrong
             database.removeAuth(userName); // we remove this auth attempt - only one try to solve allowed
             jsonResponse.put(Constants.RESPONSE_HEADER_NAME, Constants.RESPONSE_HEADER_ERROR);
             jsonResponse.put(Constants.ADDITIONAL_INFO_HEADER, Constants.TWISTED_WRONG_SOLUTION);
             sendResponse(output, jsonResponse.toJSONString());
             return false;
         }
-
     }
+
 
     private boolean handleGetUsername(OutputStream output, String nickName, String sharedKey){
         DatabaseHandler database = new DatabaseHandler();
@@ -728,11 +733,12 @@ public class Handler extends Thread{
 
                     boolean operationResult = handleCheckMail(output, clientUserName, clientSession, sharedKey);
 
+                    /*
                     if(operationResult)
                         Log.write("CHECKED MAIL FOR " + clientUserName);
                     else
                         Log.write("ERROR WHILE CHECKIG MAIL FOR " + clientUserName);
-
+                    */
                     break;
                 }
                 case("get_username"): {

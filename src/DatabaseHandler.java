@@ -28,7 +28,7 @@ public class DatabaseHandler extends DatabaseConfig {
                 " WHERE " + Constants.CONNECTIONS_ADRESS + " = ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, adress);
-
+            preparedStatement.closeOnCompletion();
             ResultSet result = preparedStatement.executeQuery();
             result.next();
 
@@ -53,7 +53,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
             preparedStatement.setString(1, adress);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             System.out.println("SQL EXCEPTION WHILE REMOVING A CONNECTION");
@@ -73,7 +73,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, adress);
-
+            preparedStatement.closeOnCompletion();
             ResultSet result = preparedStatement.executeQuery();
 
             result.next();
@@ -103,7 +103,7 @@ public class DatabaseHandler extends DatabaseConfig {
             preparedStatement.setString(1, adress);
             preparedStatement.setString(2, sharedKey);
             preparedStatement.setLong(3, aliveUntil);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
             return true;
         }catch (SQLException e){
@@ -128,7 +128,7 @@ public class DatabaseHandler extends DatabaseConfig {
                 " = ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(update)){
             preparedStatement.setString(1, adress);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
             return true;
         } catch (SQLException e) {
@@ -145,7 +145,7 @@ public class DatabaseHandler extends DatabaseConfig {
                 + Constants.CONNECTIONS_ALIVE_UNTIL + " < ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
             preparedStatement.setLong(1, currentTimeMillis() / 1000L);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             System.out.println("SQL EXCEPTION WHILE CLEANING CONNECTIONS");
@@ -159,7 +159,7 @@ public class DatabaseHandler extends DatabaseConfig {
                 + Constants.CREATING_SESSIONS_ALIVE_UNTIL + " < ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
             preparedStatement.setLong(1, currentTimeMillis() / 1000L);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             System.out.println("SQL EXCEPTION WHILE CLEANING AUTH");
@@ -173,7 +173,7 @@ public class DatabaseHandler extends DatabaseConfig {
                 + Constants.USERS_USER + " = ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
             preparedStatement.setString(1, userName);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             System.out.println("SQL EXCEPTION WHILE DELETING USER " + userName);
@@ -188,7 +188,7 @@ public class DatabaseHandler extends DatabaseConfig {
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
             preparedStatement.setString(1, userName);
             preparedStatement.setString(2, userName);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             System.out.println("SQL EXCEPTION WHILE DELETING MESSAGES OF USER " + userName);
@@ -202,7 +202,7 @@ public class DatabaseHandler extends DatabaseConfig {
                 + Constants.NICKNAMES_USER + " = ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
             preparedStatement.setString(1, userName);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             System.out.println("SQL EXCEPTION WHILE DELETING NICKNAME OF " + userName);
@@ -218,7 +218,7 @@ public class DatabaseHandler extends DatabaseConfig {
                 + Constants.LAST_ACTIVE_LAST_ACTIVE + " < ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setLong(1, (currentTimeMillis() / 1000L) - Constants.CONSIDER_INACTIVE_TIME);
-
+            preparedStatement.closeOnCompletion();
             ResultSet resultSet = preparedStatement.executeQuery();
 
             while(resultSet.next()){
@@ -248,6 +248,7 @@ public class DatabaseHandler extends DatabaseConfig {
             preparedStatement.setString(2, publicKey);
             preparedStatement.setString(3, newSession);
             preparedStatement.setLong(4, loggedUntil);
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
 
             return newSession;
@@ -270,6 +271,7 @@ public class DatabaseHandler extends DatabaseConfig {
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(insertToLastActive)){
             preparedStatement.setString(1, userName);
             preparedStatement.setLong(2, currentTimeMillis() / 1000L);
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
 
             return true;
@@ -288,6 +290,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, userName);
+            preparedStatement.closeOnCompletion();
             ResultSet result = preparedStatement.executeQuery();
             // user DEFINETELY EXISTS
             result.next();
@@ -312,6 +315,7 @@ public class DatabaseHandler extends DatabaseConfig {
                 " WHERE " + Constants.USERS_USER+ " = ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, userName);
+            preparedStatement.closeOnCompletion();
             ResultSet result = preparedStatement.executeQuery();
             result.next();
 
@@ -335,6 +339,7 @@ public class DatabaseHandler extends DatabaseConfig {
                 " WHERE " + Constants.NICKNAMES_NICKNAME + " = ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, nickName);
+            preparedStatement.closeOnCompletion();
             ResultSet result = preparedStatement.executeQuery();
             result.next();
 
@@ -358,6 +363,7 @@ public class DatabaseHandler extends DatabaseConfig {
                 " WHERE " + Constants.NICKNAMES_USER + " = ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, userName);
+            preparedStatement.closeOnCompletion();
             ResultSet result = preparedStatement.executeQuery();
             result.next();
 
@@ -383,6 +389,7 @@ public class DatabaseHandler extends DatabaseConfig {
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(insertToNickNames)){
             preparedStatement.setString(1, nickName);
             preparedStatement.setString(2, userName);
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
 
             return true;
@@ -405,7 +412,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, nickName);
-
+            preparedStatement.closeOnCompletion();
             ResultSet result = preparedStatement.executeQuery();
 
             result.next();
@@ -425,7 +432,7 @@ public class DatabaseHandler extends DatabaseConfig {
                 " WHERE " + Constants.CREATING_SESSIONS_USER + " = ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, userName);
-
+            preparedStatement.closeOnCompletion();
             ResultSet result = preparedStatement.executeQuery();
             result.next();
 
@@ -450,7 +457,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
             preparedStatement.setString(1, userName);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             System.out.println("SQL EXCEPTION WHILE REMOVING AN AUTH");
@@ -474,7 +481,7 @@ public class DatabaseHandler extends DatabaseConfig {
             preparedStatement.setString(1, userName);
             preparedStatement.setString(2, secret);
             preparedStatement.setLong(3, aliveUntil);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
             return true;
         }catch (SQLException e){
@@ -496,7 +503,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, userName);
-
+            preparedStatement.closeOnCompletion();
             ResultSet result = preparedStatement.executeQuery();
 
             result.next();
@@ -522,6 +529,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, userName);
+            preparedStatement.closeOnCompletion();
             ResultSet result = preparedStatement.executeQuery();
             result.next();
 
@@ -557,7 +565,7 @@ public class DatabaseHandler extends DatabaseConfig {
             preparedStatement.setString(1, newSession);
             preparedStatement.setLong(2, loggedUntil);
             preparedStatement.setString(3, userName);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
             return true;
         } catch (SQLException e) {
@@ -586,7 +594,7 @@ public class DatabaseHandler extends DatabaseConfig {
             preparedStatement.setString(3, type);
             preparedStatement.setLong(4, sentTime);
             preparedStatement.setBinaryStream(5, new ByteArrayInputStream(unSanitizedData), unSanitizedData.length);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
             return sentTime;
         }catch (SQLException e){
@@ -600,33 +608,47 @@ public class DatabaseHandler extends DatabaseConfig {
         }
     }
 
-    public String checkMail(String userName){
+    public String checkMail(String userName) {
         String select = "SELECT " + Constants.MESSAGES_ID + " FROM " + Constants.MESSAGES_TABLE +
                 " WHERE `" + Constants.MESSAGES_TO + "` = ?";
+        try {
+            Connection databaseConnection = getDatabaseConnection();
+            try (PreparedStatement preparedStatement = databaseConnection.prepareStatement(select)) {
+                preparedStatement.setString(1, userName);
+                preparedStatement.closeOnCompletion();
+                ResultSet result = preparedStatement.executeQuery();
 
-        try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
-            preparedStatement.setString(1, userName);
-            ResultSet result = preparedStatement.executeQuery();
+                StringBuilder resultBuilder = new StringBuilder();
 
-            StringBuilder resultBuilder = new StringBuilder();
+                while (result.next()) {
+                    resultBuilder.append(result.getLong(1));
+                    resultBuilder.append(Constants.CHECK_MAIL_SEPARATOR);
+                }
+                result.close();
 
-            while(result.next()){
-                resultBuilder.append(result.getLong(1));
-                resultBuilder.append(Constants.CHECK_MAIL_SEPARATOR);
+                if (resultBuilder.isEmpty()) { // if everything's okay but there's no messages
+                    return Constants.CHECK_MAIL_NO_MESSAGES;
+                } else {
+                    resultBuilder.deleteCharAt(resultBuilder.length() - 1);
+                    return resultBuilder.toString();
+                }
+            } catch (SQLException e) {
+                System.out.println("SQL EXCEPTION WHILE CHECKING MAIL FOR " + userName);
+                return Constants.SOMETHING_WENT_WRONG_MESSAGE;
             }
-
-            if(resultBuilder.isEmpty()){ // if everything's okay but there's no messages
-                return Constants.CHECK_MAIL_NO_MESSAGES;
-            }else{
-                resultBuilder.deleteCharAt(resultBuilder.length()-1);
-                return resultBuilder.toString();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            return Constants.SOMETHING_WENT_WRONG_MESSAGE;
+        } catch (ClassNotFoundException ex) {
+            ex.printStackTrace();
+            return Constants.SOMETHING_WENT_WRONG_MESSAGE;
+        } finally {
+            try {
+                databaseConnection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return Constants.SOMETHING_WENT_WRONG_MESSAGE;
             }
-        } catch (SQLException e) {
-            System.out.println("SQL EXCEPTION WHILE CHECKING MAIL FOR " + userName);
-            return Constants.SOMETHING_WENT_WRONG_MESSAGE;
-        } catch (ClassNotFoundException e) {
-            System.out.println("CLASS NOT FOUND EXCEPTION WHILE CHECKING MAIL FOR " + userName);
-            return Constants.SOMETHING_WENT_WRONG_MESSAGE;
         }
     }
 
@@ -636,6 +658,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, messageId);
+            preparedStatement.closeOnCompletion();
             ResultSet result = preparedStatement.executeQuery();
 
             StringBuilder resultBuilder = new StringBuilder();
@@ -669,6 +692,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(select)){
             preparedStatement.setString(1, messageId);
+            preparedStatement.closeOnCompletion();
             ResultSet messageInfo = preparedStatement.executeQuery();
 
             messageInfo.next();
@@ -725,7 +749,7 @@ public class DatabaseHandler extends DatabaseConfig {
 
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(delete)){
             preparedStatement.setString(1, id);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             System.out.println("SQL EXCEPTION WHILE REMOVING A MESSAGE WITH ID " + id);
@@ -742,8 +766,9 @@ public class DatabaseHandler extends DatabaseConfig {
                 " = ?";
         try(PreparedStatement preparedStatement = getDatabaseConnection().prepareStatement(update)){
             preparedStatement.setString(1, userName);
-
+            preparedStatement.closeOnCompletion();
             preparedStatement.executeUpdate();
+
         } catch (SQLException e) {
             System.out.println("SQL EXCEPTION WHILE UPDATING LAST ACTIVE FOR USER " + userName);
         } catch (ClassNotFoundException e) {
